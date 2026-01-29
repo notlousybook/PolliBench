@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pollinations.ai // Benchmark v5 (Selector)</title>
+    <style>
+        :root {
+            --bg: #050505;
+            --surface: #0f0f0f;
+            --surface-hover: #1a1a1a;
+            --border: #333;
+            --primary: #00ff9d;
+            --primary-dim: rgba(0, 255, 157, 0.1);
+            --accent: #bd00ff;
+            --text: #ececec;
+            --text-dim: #888;
+            --font-mono: 'SF Mono', 'Fira Code', 'Roboto Mono', monospace;
+            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        * { box-sizing: border-box; }
+        
+        body {
+            margin: 0;
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: var(--font-sans);
+            height: 100vh;
+            overflow: hidden;
+            display: grid;
+            grid-template-rows: 60px 1fr 30px;
+            grid-template-columns: 280px 1fr;
+        }
+
+        /* --- Header --- */
+        header {
+            grid-column: 1 / -1;
+            background: rgba(5, 5, 5, 0.95);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            z-index: 10;
+        }
+
+        h1 { font-size: 18px; font-weight: 600; letter-spacing: -0.5px; margin: 0; }
+        h1 span { color: var(--primary); }
+
+        .controls { display: flex; gap: 10px; align-items: center; }
+
+        input[type="text"] {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-family: var(--font-mono);
+            font-size: 12px;
+            width: 200px;
+        }
+
+        button {
+            background: var(--text);
+            color: var(--bg);
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        button:hover { background: var(--primary); color: #000; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; background: #333; color: #888; }
+        
+        button.danger { background: #331111; color: #ff4444; border: 1px solid #552222; }
+        button.danger:hover { background: #ff4444; color: #fff; }
+
+        button.small { padding: 4px 8px; font-size: 10px; background: #222; border: 1px solid #444; color: #ccc; }
+        button.small:hover { background: #fff; color: #000; }
+
+        /* --- Sidebar (Models) --- */
+        aside {
+            grid-row: 2 / 4;
+            border-right: 1px solid var(--border);
+            overflow-y: auto;
+            background: var(--surface);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .model-list-header {
+            padding: 10px 15px;
+            font-size: 11px;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            background: var(--surface);
+            z-index: 5;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .header-row { display: flex; justify-content: space-between; align-items: center; }
+        .selection-controls { display: flex; gap: 5px; }
+
+        .model-item {
+            padding: 10px 15px;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            transition: background 0.2s;
+            display: grid;
+            grid-template-columns: 20px 1fr;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .model-item:hover { background: var(--surface-hover); }
+        .model-item.active { background: var(--primary-dim); border-right: 3px solid var(--primary); }
+        .model-item.excluded { opacity: 0.5; }
+
+        .checkbox-wrapper { display: flex; align-items: center; justify-content: center; }
+        .checkbox-wrapper input { cursor: pointer; transform: scale(1.2); accent-color: var(--primary); }
+
+        .model-info { display: flex; flex-direction: column; gap: 4px; overflow: hidden; }
+        .model-name { font-weight: 500; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .model-meta { display: flex; justify-content: space-between; font-size: 10px; color: var(--text-dim); }
+        
+        .progress-track {
+            height: 3px;
+            background: #222;
+            border-radius: 2px;
+            overflow: hidden;
+            margin-top: 4px;
+        }
+        .progress-fill {
+            height: 100%;
+            background: var(--primary);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        .progress-fill.error { background: #ff4444; }
+
+        /* --- Main Content --- */
+        main {
+            grid-row: 2 / 3;
+            grid-column: 2 / 3;
+            display: grid;
+            grid-template-rows: 50px 1fr;
+            overflow: hidden;
+            background: #000;
+        }
+
+        /* --- Prompt Tabs --- */
+        .tabs {
+            display: flex;
+            overflow-x: auto;
+            background: var(--bg);
+            border-bottom: 1px solid var(--border);
+            align-items: center;
+        }
+        
+        .tab {
+            padding: 0 20px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: var(--text-dim);
+            border-right: 1px solid var(--border);
+            cursor: pointer;
+            white-space: nowrap;
+            position: relative;
+        }
+
+        .tab:hover { color: var(--text); background: var(--surface); }
+        .tab.active { color: var(--primary); background: var(--surface-hover); }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+            background: #333;
+            transition: all 0.3s;
+        }
+        .status-dot.pending { background: #444; border: 1px solid #666; }
+        .status-dot.loading { background: #ffbd2e; box-shadow: 0 0 8px #ffbd2e; animation: pulse 0.5s infinite alternate; }
+        .status-dot.success { background: var(--primary); box-shadow: 0 0 5px var(--primary); }
+        .status-dot.error { background: #ff4444; }
+
+        /* --- Preview Area --- */
+        .preview-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: #fff;
+            display: block;
+        }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--text-dim);
+            text-align: center;
+            padding: 20px;
+            font-family: var(--font-mono);
+        }
+
+        .code-view {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: #0a0a0a;
+            color: #dcdcdc;
+            padding: 20px;
+            font-family: var(--font-mono);
+            font-size: 13px;
+            line-height: 1.5;
+            overflow: auto;
+            white-space: pre-wrap;
+            z-index: 2;
+        }
+
+        .view-toggle {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.8);
+            color: var(--text);
+            border: 1px solid var(--border);
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            text-transform: uppercase;
+            z-index: 100;
+        }
+
+        /* --- Footer --- */
+        footer {
+            grid-row: 3 / 4;
+            grid-column: 2 / 3;
+            background: var(--surface);
+            border-top: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            font-size: 11px;
+            color: var(--text-dim);
+            justify-content: space-between;
+        }
+
+        @keyframes pulse { from { opacity: 0.6; } to { opacity: 1; } }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg); }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>POLLINATIONS<span>.AI</span> // BENCHMARK V5</h1>
+    <div class="controls">
+        <input type="text" id="apiKey" placeholder="Optional: API Key (sk_...)" />
+        <button id="btnStart" onclick="benchmark.start()">Run / Resume</button>
+        <button class="danger" onclick="DataManager.clear()">Reset</button>
+    </div>
+</header>
+
+<aside id="modelList">
+    <!-- Headers injected by JS -->
+</aside>
+
+<main>
+    <div class="tabs" id="promptTabs"></div>
+    <div class="preview-container">
+        <div id="emptyState" class="empty-state">
+            <h2>READY TO BENCHMARK</h2>
+            <p>1. Select models in sidebar.<br>2. Click "Run / Resume".<br>3. Progress auto-saves.</p>
+        </div>
+        <iframe id="previewFrame" sandbox="allow-scripts allow-pointer-lock allow-same-origin allow-forms"></iframe>
+        <div id="codeView" class="code-view" style="display:none;"></div>
+        <button class="view-toggle" id="viewToggle" onclick="ui.toggleView()" style="display:none">Toggle Code/Preview</button>
+    </div>
+</main>
+
+<footer>
+    <span id="statusText">Idle</span>
+    <span>Pollinations.ai Gateway</span>
+</footer>
+
+<script>
+const CONFIG = {
+    baseUrl: 'https://gen.pollinations.ai',
+    prompts: [
+        { id: 'maze', name: 'Rotating Maze', text: `Create an interactive rotating maze puzzle game using only HTML, CSS, and JavaScript with the following specifications: HTML: Use a single HTML file with a 600x600 pixels canvas for game rendering and a horizontal slider input (-180 to +180 degrees) to control rotation. Maze Specifications: Circular maze design with at least 3 concentric rings, one entry point at the center, and one exit point at the outermost ring. Ball: A small circle that starts at the center of the maze and responds realistically to physics including gravity, acceleration, and collisions. Rotation Mechanics: Maze rotation controlled smoothly via slider input, which directly changes gravity's direction. Interaction & Physics: Implement realistic gravity physics, accurate collision detection, and smooth rotation animations. Win Condition: Display a victory message when the ball reaches the maze's outermost ring exit. Visual Design: Clear, simple, and intuitive visual design with contrasting colors for good visibility. Code Structure: Entire implementation in a single HTML file with modular JavaScript functions for maze drawing, ball movement, collision detection, rotation handling, and game initialization.` },
+        { id: 'solar', name: 'Solar System', text: `Create a stunning and detailed single-page HTML webpage that utilizes a cinematic "scrollytelling" style to take the user on an immersive journey through the Solar System. Key Requirements: Each celestial body (Sun → Mercury → Venus → Earth → Mars → Jupiter → Saturn → Uranus → Neptune) must have its own interactive, full-screen section visible during scrolling. Use smooth scroll-triggered animations via GSAP (ScrollTrigger) CDN for creating dynamic transitions (zoom-ins, parallax backgrounds, transitions between planets, text fade-ins, particle animations) so users truly feel they're traveling through space. Provide meaningful educational content about each planet: prominently display the planet name, include a high-quality visual representation, and provide informative facts that are scientifically accurate and compelling. Include modern, responsive CSS styling with dark, cosmic, futuristic themes: dark space-themed backgrounds, moving stars or particles, and visually appealing text and design elements. Provide original, thoughtfully prepared code within just one isolated HTML file, entirely self-contained. Maximize the informationally rich, visually engaging, and cinematic feel of the page while remaining organized and optimized for user scrolling experience.` },
+        { id: 'birds', name: 'Angry Birds', text: `Create the best implementation of the game Angry Birds in HTML, CSS, and JavaScript, and provide it as one single code file.` },
+        { id: 'rocket', name: 'Rocket Launch', text: `You have to create a simulation of a rocket launch from a launch station and eventually landing on the Moon. Do not rush or compromise in code length and quality. You are up against many other competitors and the best one will be awarded. Generate in a single HTML, CSS, and JS code.` },
+        { id: 'music', name: 'Symphony Gen', text: `Generate the most epic music with musical notations alongside it that you can in HTML, CSS, and JavaScript. Create a complete symphony generator that produces rich, layered musical compositions with real-time visual notation display. Include multiple instruments, complex harmonies, and dynamic tempo changes in one single code file.` },
+        { id: 'flight', name: 'Flight Sim', text: `Build the best version (not basic) of Microsoft Flight Simulator released in August 18, 2020 one of the most iconic chase camera view and 3D environment flight game in one single HTML, CSS, and JS code. Include realistic physics, detailed 3D terrain, multiple aircraft, weather systems, and cinematic chase camera perspectives.` },
+        { id: 'trading', name: 'Trading View', text: `Create a trading view like dashboard with simulated tick by tick candlesticks chart with different time frames and different type of charts. Include everything that such a dashboard might include - multiple technical indicators, order placement, portfolio tracking, news feed, and real-time market data simulation in one single HTML, CSS, and JS code.` },
+        { id: 'nursery', name: 'Plant Nursery', text: `Make a stunning yet elegant looking landing page for a plant nursery named Susan Rose. Understand the nature of the business and make a page that resonates it fully and is not generic slop. Be creative yet production-ready - include seasonal plant displays, care tips, online ordering system, customer testimonials, and immersive botanical animations in one single HTML, CSS, and JS code.` }
+    ]
+};
+
+const STATE = {
+    models: [],
+    excluded: new Set(), // Set of model IDs
+    results: {},
+    activeModel: null,
+    activePromptId: null,
+    isViewCode: true
+};
+
+const DataManager = {
+    key: 'pollinations_bench_v5',
+    save() {
+        try {
+            const data = {
+                results: STATE.results,
+                excluded: Array.from(STATE.excluded)
+            };
+            localStorage.setItem(this.key, JSON.stringify(data));
+            document.getElementById('statusText').textContent = 'Progress Saved';
+        } catch(e) { console.error("Save failed", e); }
+    },
+    load() {
+        try {
+            const raw = localStorage.getItem(this.key);
+            if (raw) {
+                const data = JSON.parse(raw);
+                if (data.excluded) STATE.excluded = new Set(data.excluded);
+                return data.results || {};
+            }
+        } catch(e) { console.error("Load failed", e); }
+        return {};
+    },
+    clear() {
+        if(confirm("Delete all progress and settings?")) {
+            localStorage.removeItem(this.key);
+            location.reload();
+        }
+    }
+};
+
+const UI = {
+    els: {
+        modelList: document.getElementById('modelList'),
+        promptTabs: document.getElementById('promptTabs'),
+        previewFrame: document.getElementById('previewFrame'),
+        codeView: document.getElementById('codeView'),
+        emptyState: document.getElementById('emptyState'),
+        viewToggle: document.getElementById('viewToggle'),
+        btnStart: document.getElementById('btnStart'),
+        apiKey: document.getElementById('apiKey'),
+        statusText: document.getElementById('statusText')
+    },
+
+    init() {
+        this.els.promptTabs.innerHTML = CONFIG.prompts.map(p => 
+            `<div class="tab" onclick="ui.selectPrompt('${p.id}')" id="tab-${p.id}">
+                <div class="status-dot pending" id="dot-global-${p.id}"></div>
+                ${p.name}
+            </div>`
+        ).join('');
+        
+        const savedKey = localStorage.getItem('pollinations_apikey');
+        if (savedKey) this.els.apiKey.value = savedKey;
+        this.els.apiKey.addEventListener('change', (e) => localStorage.setItem('pollinations_apikey', e.target.value));
+    },
+
+    renderModelList() {
+        const header = `
+        <div class="model-list-header">
+            <div class="header-row">
+                <span>Models</span>
+                <span>${STATE.models.length}</span>
+            </div>
+            <div class="header-row">
+                <span style="font-size:9px;color:#666">Select:</span>
+                <div class="selection-controls">
+                    <button class="small" onclick="ui.bulkSelect(true)">All</button>
+                    <button class="small" onclick="ui.bulkSelect(false)">None</button>
+                </div>
+            </div>
+        </div>`;
+        
+        const listHtml = STATE.models.map(model => {
+            const results = STATE.results[model.id] || {};
+            const doneCount = Object.values(results).filter(r => r.status === 'success').length;
+            const errorCount = Object.values(results).filter(r => r.status === 'error').length;
+            const progress = (doneCount / CONFIG.prompts.length) * 100;
+            const isActive = STATE.activeModel === model.id ? 'active' : '';
+            const isExcluded = STATE.excluded.has(model.id);
+            
+            return `
+                <div class="model-item ${isActive} ${isExcluded ? 'excluded' : ''}" id="model-${model.id}" onclick="ui.selectModel('${model.id}')">
+                    <div class="checkbox-wrapper" onclick="event.stopPropagation()">
+                        <input type="checkbox" ${!isExcluded ? 'checked' : ''} onchange="ui.toggleModel('${model.id}')">
+                    </div>
+                    <div class="model-info">
+                        <div class="model-name">${model.name || model.id}</div>
+                        <div class="model-meta">
+                            <span>${model.description ? model.description.substring(0,25) : 'Text Gen'}</span>
+                            <span>${doneCount}/${CONFIG.prompts.length}</span>
+                        </div>
+                        <div class="progress-track">
+                            <div class="progress-fill ${errorCount > 0 ? 'error' : ''}" style="width: ${progress}%"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        this.els.modelList.innerHTML = header + listHtml;
+    },
+
+    bulkSelect(selectAll) {
+        if (selectAll) {
+            STATE.excluded.clear();
+        } else {
+            STATE.models.forEach(m => STATE.excluded.add(m.id));
+        }
+        DataManager.save();
+        this.renderModelList();
+    },
+
+    toggleModel(id) {
+        if (STATE.excluded.has(id)) {
+            STATE.excluded.delete(id);
+        } else {
+            STATE.excluded.add(id);
+        }
+        DataManager.save();
+        this.renderModelList();
+    },
+
+    updateStatus(modelId, promptId) {
+        const result = STATE.results[modelId][promptId];
+        
+        // Update Tab Dot
+        if (STATE.activeModel === modelId) {
+            const dot = document.getElementById(`dot-global-${promptId}`);
+            if (dot) dot.className = `status-dot ${result.status}`;
+        }
+
+        // Update Sidebar
+        const modelDiv = document.getElementById(`model-${modelId}`);
+        if (modelDiv) {
+            const results = STATE.results[modelId];
+            const done = Object.values(results).filter(r => r.status === 'success').length;
+            const errors = Object.values(results).filter(r => r.status === 'error').length;
+            const pct = (done / CONFIG.prompts.length) * 100;
+            const fill = modelDiv.querySelector('.progress-fill');
+            const meta = modelDiv.querySelector('.model-meta span:last-child');
+            
+            if (fill) {
+                fill.style.width = `${pct}%`;
+                if (errors > 0) fill.classList.add('error');
+                else fill.classList.remove('error');
+            }
+            if (meta) meta.innerText = `${done}/${CONFIG.prompts.length}`;
+        }
+        
+        // Update Preview
+        if (STATE.activeModel === modelId && STATE.activePromptId === promptId) {
+            this.renderPreview(true);
+        }
+    },
+
+    selectModel(id) {
+        if (STATE.activeModel) document.getElementById(`model-${STATE.activeModel}`)?.classList.remove('active');
+        STATE.activeModel = id;
+        document.getElementById(`model-${id}`)?.classList.add('active');
+        
+        if (!STATE.activePromptId) STATE.activePromptId = CONFIG.prompts[0].id;
+        
+        CONFIG.prompts.forEach(p => {
+            const status = STATE.results[id][p.id]?.status || 'pending';
+            const dot = document.getElementById(`dot-global-${p.id}`);
+            dot.className = `status-dot ${status}`;
+        });
+
+        this.renderPreview();
+    },
+
+    selectPrompt(id) {
+        document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+        document.getElementById(`tab-${id}`).classList.add('active');
+        STATE.activePromptId = id;
+        this.renderPreview();
+    },
+
+    toggleView() {
+        STATE.isViewCode = !STATE.isViewCode;
+        this.renderPreview();
+    },
+
+    renderPreview(isPartial = false) {
+        if (!STATE.activeModel || !STATE.activePromptId) return;
+
+        this.els.emptyState.style.display = 'none';
+        this.els.viewToggle.style.display = 'block';
+
+        const result = STATE.results[STATE.activeModel][STATE.activePromptId];
+        const rawContent = result.content || '';
+
+        if (isPartial && STATE.isViewCode) {
+            this.els.codeView.textContent = rawContent;
+            this.els.codeView.scrollTop = this.els.codeView.scrollHeight;
+            return;
+        }
+
+        if (STATE.isViewCode) {
+            this.els.codeView.style.display = 'block';
+            this.els.previewFrame.style.display = 'none';
+            this.els.codeView.textContent = rawContent || (result.status === 'loading' ? 'Initializing Stream...' : (result.status === 'error' ? `Error: ${result.error}` : 'Waiting to start...'));
+        } else {
+            this.els.codeView.style.display = 'none';
+            this.els.previewFrame.style.display = 'block';
+            if (result.status === 'success' || (result.status === 'loading' && rawContent.length > 50)) {
+                const cleanCode = Scheduler.smartClean(rawContent);
+                // Inject Default Dark Mode CSS to prevent White Screen issues
+                const safeCode = cleanCode + `<style>body { background-color: #000; color: #fff; }</style>`;
+                
+                if (this.els.previewFrame.srcdoc !== safeCode) {
+                    this.els.previewFrame.srcdoc = safeCode;
+                }
+            } else if (result.status === 'loading') {
+                this.els.previewFrame.srcdoc = `<html><body style="background:#000;color:#666;display:flex;justify-content:center;align-items:center;height:100vh;font-family:sans-serif;">Streaming Code...</body></html>`;
+            } else if (result.status === 'error') {
+                 this.els.previewFrame.srcdoc = `<html><body style="background:#000;color:#ff4444;padding:20px;font-family:monospace;">Generation Failed:<br>${result.error}</body></html>`;
+            } else {
+                this.els.previewFrame.srcdoc = '';
+            }
+        }
+    }
+};
+
+const API = {
+    getKey() { return UI.els.apiKey.value.trim(); },
+
+    async fetchModels() {
+        try {
+            const res = await fetch(`${CONFIG.baseUrl}/v1/models`);
+            const json = await res.json();
+            let models = Array.isArray(json) ? json : (json.data || []);
+            
+            const priority = ['openai', 'claude', 'gemini', 'mistral', 'deepseek'];
+            return models.sort((a, b) => {
+                const aIdx = priority.findIndex(p => a.id.toLowerCase().includes(p));
+                const bIdx = priority.findIndex(p => b.id.toLowerCase().includes(p));
+                if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx;
+                if (aIdx !== -1) return -1;
+                if (bIdx !== -1) return 1;
+                return 0;
+            });
+        } catch (e) {
+            console.error(e);
+            return [];
+        }
+    },
+
+    async generateStream(modelId, promptText, onChunk, onError) {
+        const headers = { 'Content-Type': 'application/json' };
+        const key = this.getKey();
+        if (key) headers['Authorization'] = `Bearer ${key}`;
+
+        try {
+            const response = await fetch(`${CONFIG.baseUrl}/v1/chat/completions`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({
+                    model: modelId,
+                    messages: [
+                        { role: "system", content: "You are an expert web developer. Write ONE SINGLE HTML file containing CSS and JS. Do not explain. Do not use markdown." },
+                        { role: "user", content: promptText }
+                    ],
+                    stream: true
+                })
+            });
+
+            if (!response.ok) {
+                if (response.status === 401) throw new Error("401 Unauthorized");
+                if (response.status === 429) throw new Error("429 Rate Limit");
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop(); 
+
+                for (const line of lines) {
+                    const trimmed = line.trim();
+                    if (trimmed.startsWith('data: ')) {
+                        const dataStr = trimmed.slice(6);
+                        if (dataStr === '[DONE]') return;
+                        try {
+                            const json = JSON.parse(dataStr);
+                            const content = json.choices[0]?.delta?.content || '';
+                            if (content) onChunk(content);
+                        } catch (e) {}
+                    }
+                }
+            }
+        } catch (e) {
+            onError(e);
+        }
+    }
+};
+
+const Scheduler = {
+    smartClean(raw) {
+        if (!raw) return '';
+        let clean = raw;
+        clean = clean.replace(/<think>[\s\S]*?<\/think>/gi, ''); // Remove Reasoning
+        
+        // Extract Markdown
+        const markdownMatch = clean.match(/```html([\s\S]*?)```/i);
+        if (markdownMatch) return markdownMatch[1].trim();
+        
+        // Extract HTML Start
+        const docTypeIndex = clean.indexOf('<!DOCTYPE');
+        const htmlTagIndex = clean.indexOf('<html');
+        if (docTypeIndex !== -1) return clean.substring(docTypeIndex);
+        if (htmlTagIndex !== -1) return clean.substring(htmlTagIndex);
+
+        return clean.replace(/```/g, '').trim();
+    },
+
+    async runModelQueue(modelId) {
+        if (STATE.excluded.has(modelId)) return; // Skip excluded
+
+        for (const prompt of CONFIG.prompts) {
+            const current = STATE.results[modelId][prompt.id];
+
+            // Skip completed
+            if (current.status === 'success' && current.content.length > 50) continue;
+
+            STATE.results[modelId][prompt.id].status = 'loading';
+            STATE.results[modelId][prompt.id].content = '';
+            UI.updateStatus(modelId, prompt.id);
+            UI.els.statusText.textContent = `Generating: ${modelId} > ${prompt.name}`;
+
+            await new Promise(resolve => {
+                let fullContent = '';
+                API.generateStream(modelId, prompt.text,
+                    (chunk) => {
+                        fullContent += chunk;
+                        STATE.results[modelId][prompt.id].content = fullContent;
+                        UI.updateStatus(modelId, prompt.id);
+                    },
+                    (error) => {
+                        console.error(modelId, error);
+                        STATE.results[modelId][prompt.id].status = 'error';
+                        STATE.results[modelId][prompt.id].error = error.message;
+                        UI.updateStatus(modelId, prompt.id);
+                        DataManager.save();
+                        resolve();
+                    }
+                ).then(() => {
+                    if (STATE.results[modelId][prompt.id].status !== 'error') {
+                        STATE.results[modelId][prompt.id].status = 'success';
+                        STATE.results[modelId][prompt.id].content = Scheduler.smartClean(STATE.results[modelId][prompt.id].content);
+                        UI.updateStatus(modelId, prompt.id);
+                        DataManager.save();
+                    }
+                    resolve();
+                });
+            });
+            
+            await new Promise(r => setTimeout(r, 2000));
+        }
+    }
+};
+
+const benchmark = {
+    start: async () => {
+        const btn = UI.els.btnStart;
+        btn.disabled = true;
+        btn.innerText = "Initializing...";
+
+        const models = await API.fetchModels();
+        STATE.models = models;
+        
+        const savedResults = DataManager.load();
+        
+        models.forEach(m => {
+            STATE.results[m.id] = {};
+            CONFIG.prompts.forEach(p => {
+                if (savedResults[m.id] && savedResults[m.id][p.id]) {
+                    STATE.results[m.id][p.id] = savedResults[m.id][p.id];
+                } else {
+                    STATE.results[m.id][p.id] = { status: 'pending', content: '' };
+                }
+            });
+        });
+
+        UI.renderModelList();
+        UI.init();
+
+        if (models.length > 0) {
+            UI.selectModel(models[0].id);
+            UI.selectPrompt(CONFIG.prompts[0].id);
+        }
+
+        btn.innerText = "Running...";
+        
+        // Only run models that are NOT excluded
+        STATE.models.forEach(model => {
+            if (!STATE.excluded.has(model.id)) {
+                Scheduler.runModelQueue(model.id);
+            }
+        });
+        
+        // Reset button text after 3s (just for visual feedback that trigger happened)
+        setTimeout(() => {
+            btn.disabled = false;
+            btn.innerText = "Run / Resume";
+            UI.els.statusText.textContent = "Processing background queues...";
+        }, 3000);
+    }
+};
+
+window.benchmark = benchmark;
+window.ui = UI;
+window.DataManager = DataManager;
+</script>
+</body>
+</html>
