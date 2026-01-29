@@ -29,7 +29,7 @@
             height: 100vh;
             overflow: hidden;
             display: grid;
-            grid-template-rows: 60px 1fr 30px;
+            grid-template-rows: 60px 1fr 50px;
             grid-template-columns: 280px 1fr;
         }
 
@@ -80,6 +80,9 @@
         
         button.danger { background: #331111; color: #ff4444; border: 1px solid #552222; }
         button.danger:hover { background: #ff4444; color: #fff; }
+        
+        button.action { background: var(--accent); color: #fff; }
+        button.action:hover { background: #d44dff; }
 
         button.small { padding: 4px 8px; font-size: 10px; background: #222; border: 1px solid #444; color: #ccc; }
         button.small:hover { background: #fff; color: #000; }
@@ -262,8 +265,8 @@
             border-top: 1px solid var(--border);
             display: flex;
             align-items: center;
-            padding: 0 10px;
-            font-size: 11px;
+            padding: 0 20px;
+            font-size: 12px;
             color: var(--text-dim);
             justify-content: space-between;
         }
@@ -279,7 +282,8 @@
 <header>
     <h1>POLLINATIONS<span>.AI</span> // BENCHMARK V5</h1>
     <div class="controls">
-        <input type="text" id="apiKey" placeholder="Optional: API Key (sk_...)" />
+        <input type="text" id="apiKey" placeholder="Optional: API Key (sk_...)" oninput="ui.toggleKeyButton()" />
+        <button id="btnGetKey" class="action" onclick="window.open('https://enter.pollinations.ai', '_blank')" style="display:none;">GET KEY</button>
         <button id="btnStart" onclick="benchmark.start()">Run / Resume</button>
         <button class="danger" onclick="DataManager.clear()">Reset</button>
     </div>
@@ -381,6 +385,7 @@ const UI = {
         viewToggle: document.getElementById('viewToggle'),
         btnStart: document.getElementById('btnStart'),
         apiKey: document.getElementById('apiKey'),
+        btnGetKey: document.getElementById('btnGetKey'),
         statusText: document.getElementById('statusText')
     },
 
@@ -394,7 +399,19 @@ const UI = {
         
         const savedKey = localStorage.getItem('pollinations_apikey');
         if (savedKey) this.els.apiKey.value = savedKey;
-        this.els.apiKey.addEventListener('change', (e) => localStorage.setItem('pollinations_apikey', e.target.value));
+        this.toggleKeyButton();
+        this.els.apiKey.addEventListener('change', (e) => {
+            localStorage.setItem('pollinations_apikey', e.target.value);
+            this.toggleKeyButton();
+        });
+    },
+
+    toggleKeyButton() {
+        if (!this.els.apiKey.value.trim()) {
+            this.els.btnGetKey.style.display = 'inline-block';
+        } else {
+            this.els.btnGetKey.style.display = 'none';
+        }
     },
 
     renderModelList() {
