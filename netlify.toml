@@ -1,0 +1,5 @@
+[build]
+  publish = "."
+
+[dev]
+  command = "bun x http-server"
